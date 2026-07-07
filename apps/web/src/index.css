@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+}
+
+@layer components {
+  .flash-gradient {
+    background: linear-gradient(135deg, #1E4FFF 0%, #0055FF 50%, #003DD6 100%);
+  }
+}

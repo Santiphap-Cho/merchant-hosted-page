@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <rect width="400" height="400" fill="#E8EFFF"/>
+  <rect x="80" y="120" width="240" height="180" rx="16" fill="#1E4FFF" opacity="0.15"/>
+  <circle cx="200" cy="170" r="40" fill="#1E4FFF" opacity="0.25"/>
+  <path d="M120 280h160" stroke="#1E4FFF" stroke-width="8" stroke-linecap="round" opacity="0.3"/>
+  <text x="200" y="330" text-anchor="middle" fill="#1E4FFF" font-size="20" font-family="system-ui,sans-serif" opacity="0.5">ThaiMark</text>
+</svg>
