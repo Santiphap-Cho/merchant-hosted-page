@@ -21,23 +21,32 @@ import { createOrderSchema, syncChargeSchema } from "../schemas/index.js";
 export const ordersRouter: Router = Router();
 
 async function syncOrderWithCharge(orderId: string, hintChargeId?: string) {
-  const order = store.getOrder(orderId);
-  if (!order) {
-    throw new AppError(404, "Order not found");
-  }
+  let order = await store.getOrder(orderId);
 
   const chargeId =
     hintChargeId ??
-    order.chargeId ??
-    (await resolveChargeIdForOrder(order)) ??
+    order?.chargeId ??
+    (order ? await resolveChargeIdForOrder(order) : null) ??
     undefined;
 
   if (!chargeId) {
+    if (!order) {
+      throw new AppError(404, "Order not found");
+    }
     throw new AppError(400, "No charge linked to this order yet");
   }
 
   const charge = await getCharge(chargeId);
-  const updated = store.updateOrderCharge(order.id, {
+
+  if (!order) {
+    const ref = charge.merchant_reference_id;
+    if (ref && ref !== orderId) {
+      throw new AppError(404, "Order not found");
+    }
+    order = await store.recoverOrderFromCharge(orderId, charge);
+  }
+
+  const updated = await store.updateOrderCharge(order.id, {
     id: charge.id,
     status: charge.status,
     sub_status: charge.sub_status,
@@ -60,7 +69,7 @@ ordersRouter.get("/", async (req, res, next) => {
       throw new AppError(400, "sessionId query parameter is required");
     }
 
-    const orders = store.listOrdersBySession(sessionId);
+    const orders = await store.listOrdersBySession(sessionId);
     res.json({
       data: orders.map((order) => toOrderResponse(order)),
     });
@@ -75,7 +84,7 @@ ordersRouter.post("/", async (req, res, next) => {
 
     let order;
     try {
-      order = store.createOrder(input);
+      order = await store.createOrder(input);
     } catch (err) {
       if (err instanceof Error && err.message === "CART_EMPTY") {
         throw new AppError(400, "Cart is empty");
@@ -92,7 +101,7 @@ ordersRouter.post("/", async (req, res, next) => {
       capture: input.capture,
     });
 
-    store.setCheckoutToken(order.id, checkoutSession.token);
+    await store.setCheckoutToken(order.id, checkoutSession.token);
 
     res.status(201).json({
       ...toOrderResponse(order),
@@ -122,7 +131,7 @@ ordersRouter.post("/:id/sync-charge", async (req, res, next) => {
 ordersRouter.get("/:id/payment-return", async (req, res, next) => {
   try {
     const orderId = req.params.id;
-    const order = store.getOrder(orderId);
+    const order = await store.getOrder(orderId);
     if (!order) {
       throw new AppError(404, "Order not found");
     }
@@ -153,7 +162,7 @@ ordersRouter.get("/:id/payment-return", async (req, res, next) => {
 
 ordersRouter.post("/:id/refund", async (req, res, next) => {
   try {
-    const order = store.getOrder(req.params.id);
+    const order = await store.getOrder(req.params.id);
 
     if (!order) {
       throw new AppError(404, "Order not found");
@@ -174,7 +183,7 @@ ordersRouter.post("/:id/refund", async (req, res, next) => {
     );
 
     const refreshed = await getCharge(order.chargeId);
-    const updated = store.updateOrderCharge(order.id, {
+    const updated = await store.updateOrderCharge(order.id, {
       id: refreshed.id,
       status: refreshed.status,
       sub_status: refreshed.sub_status,
@@ -194,7 +203,7 @@ ordersRouter.post("/:id/refund", async (req, res, next) => {
 
 ordersRouter.post("/:id/capture", async (req, res, next) => {
   try {
-    const order = store.getOrder(req.params.id);
+    const order = await store.getOrder(req.params.id);
 
     if (!order) {
       throw new AppError(404, "Order not found");
@@ -210,7 +219,7 @@ ordersRouter.post("/:id/capture", async (req, res, next) => {
     }
 
     const captured = await captureCharge(order.chargeId);
-    const updated = store.updateOrderCharge(order.id, {
+    const updated = await store.updateOrderCharge(order.id, {
       id: captured.id,
       status: captured.status,
       sub_status: captured.sub_status,
@@ -230,7 +239,7 @@ ordersRouter.post("/:id/capture", async (req, res, next) => {
 
 ordersRouter.post("/:id/reverse", async (req, res, next) => {
   try {
-    const order = store.getOrder(req.params.id);
+    const order = await store.getOrder(req.params.id);
 
     if (!order) {
       throw new AppError(404, "Order not found");
@@ -246,7 +255,7 @@ ordersRouter.post("/:id/reverse", async (req, res, next) => {
     }
 
     const reversed = await reverseCharge(order.chargeId);
-    const updated = store.updateOrderCharge(order.id, {
+    const updated = await store.updateOrderCharge(order.id, {
       id: reversed.id,
       status: reversed.status,
       sub_status: reversed.sub_status,
@@ -266,7 +275,7 @@ ordersRouter.post("/:id/reverse", async (req, res, next) => {
 
 ordersRouter.get("/:id", async (req, res, next) => {
   try {
-    const order = store.getOrder(req.params.id);
+    const order = await store.getOrder(req.params.id);
 
     if (!order) {
       throw new AppError(404, "Order not found");
@@ -280,7 +289,7 @@ ordersRouter.get("/:id", async (req, res, next) => {
       if (resolvedId) {
         try {
           const charge = await getCharge(resolvedId);
-          const updated = store.updateOrderCharge(order.id, {
+          const updated = await store.updateOrderCharge(order.id, {
             id: charge.id,
             status: charge.status,
             sub_status: charge.sub_status,
@@ -300,7 +309,7 @@ ordersRouter.get("/:id", async (req, res, next) => {
       try {
         const charge = await getCharge(order.chargeId);
         chargeSummary = toChargeSummary(charge);
-        const updated = store.updateOrderCharge(order.id, {
+        const updated = await store.updateOrderCharge(order.id, {
           id: charge.id,
           status: charge.status,
           sub_status: charge.sub_status,

@@ -11,7 +11,7 @@ cartRouter.post("/", async (req, res, next) => {
     const input = addToCartSchema.parse(req.body);
 
     try {
-      const cart = store.addToCart(
+      const cart = await store.addToCart(
         input.sessionId,
         input.productId,
         input.quantity,
@@ -37,7 +37,7 @@ cartRouter.post("/", async (req, res, next) => {
 
 cartRouter.get("/:sessionId", async (req, res, next) => {
   try {
-    const cart = store.getCartWithItems(req.params.sessionId);
+    const cart = await store.getCartWithItems(req.params.sessionId);
 
     if (!cart) {
       res.json({

@@ -168,8 +168,15 @@ export async function createPayGenixCheckoutSession(
 }
 
 export function getMerchantBaseUrl(): string {
+  if (process.env.MERCHANT_URL) {
+    return process.env.MERCHANT_URL;
+  }
+  // On Vercel, default to the deployed web app so PayGenix callbacks never
+  // point at localhost.
+  if (process.env.VERCEL === "1") {
+    return "https://merchant-hosted-page-web.vercel.app";
+  }
   return (
-    process.env.MERCHANT_URL ??
     process.env.CORS_ORIGIN ??
     `http://localhost:${process.env.WEB_PORT ?? "5173"}`
   );

@@ -14,16 +14,29 @@ export function createApp(): Express {
 
   app.use(
     cors({
-      origin:
-        process.env.NODE_ENV === "production"
-          ? corsOrigin
-          : (origin, callback) => {
-              if (!origin || /^https?:\/\/localhost:\d+$/.test(origin)) {
-                callback(null, true);
-              } else {
-                callback(null, corsOrigin);
-              }
-            },
+      origin: (origin, callback) => {
+        // No Origin header (curl, same-origin, server-to-server) → allow.
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        // Explicitly configured production origin.
+        if (origin === corsOrigin) {
+          callback(null, true);
+          return;
+        }
+        // Any Vercel deployment of this app (preview or production).
+        if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) {
+          callback(null, true);
+          return;
+        }
+        // Local dev on any localhost port.
+        if (/^https?:\/\/localhost:\d+$/.test(origin)) {
+          callback(null, true);
+          return;
+        }
+        callback(null, false);
+      },
     }),
   );
   app.use(express.json());

@@ -10,7 +10,12 @@ export default defineConfig(({ mode }) => {
 
   const apiPort = env.API_PORT || "3001";
   const webPort = Number(env.WEB_PORT) || 5173;
-  const apiUrl = env.VITE_API_URL || `http://localhost:${apiPort}`;
+  const apiUrl =
+    process.env.VITE_API_URL ||
+    env.VITE_API_URL ||
+    (process.env.VERCEL === "1"
+      ? "https://merchant-hosted-page-api-zeta.vercel.app"
+      : `http://localhost:${apiPort}`);
   const useHttps = env.WEB_HTTPS !== "false";
 
   return {
